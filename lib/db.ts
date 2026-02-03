@@ -11,7 +11,7 @@ if (!cached) {
     cached = global.mongoose = { connect: null, promise: null }
 }
 
-async function connectdb() {
+export async function connectdb() {
     if(cached.connect){
         return cached.connect;
     }
@@ -19,7 +19,7 @@ async function connectdb() {
     if(!cached.promise){
         const opts = {
             bufferCommands : true,
-            mazPoolSize : 10 
+            maxPoolSize : 10 
         }
         mongoose.connect(MONGODB_URL, opts)
         .then(()=> mongoose.connection)
