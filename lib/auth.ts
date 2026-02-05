@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import { NextAuthOptions } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -6,7 +7,7 @@ import { connectdb } from "./db";
 import User from "@/models/user";
 import bcrypt from "bcryptjs";
 
-export const authoption = {
+export const authoption: NextAuthOptions = {
     providers: [
         // GitHubProvider({
         //     clientId: process.env.GITHUB_ID!,
@@ -37,7 +38,7 @@ export const authoption = {
                         throw new Error("No user found with this email")
                     }
 
-                    const isvalid = bcrypt.compare(credentials.password, user.password
+                    const isvalid = await bcrypt.compare(credentials.password, user.password
                     )
 
                     if (!isvalid) {
@@ -49,10 +50,36 @@ export const authoption = {
                         email: user.email
                     }
                 } catch (error) {
-                    console.log("error in auth" , error);
+                    console.log("error in auth", error);
                     throw new Error("Something wrong in email or password")
                 }
             }
         })
-    ]
+    ],
+    callbacks: {
+        async jwt({ token, user }) {
+            if (user) {
+                token.id = user.id;
+            }
+            return token
+        },
+        async session({ session, token, user }) {
+            if (session.user) {
+                session.user.id = token.id as string;
+            }
+            return session
+        }
+    },
+
+    pages: {
+        signIn: "/login",
+        error: "/login",
+    },
+
+    session: {
+        strategy: "jwt",
+        maxAge: 30 * 24 * 60 * 60,
+    },
+
+    secret: process.env.AUTH_SECRET,
 }
