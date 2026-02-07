@@ -6,8 +6,10 @@ const RegisterPage = () => {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [confirmpassword, setConfirmPassword] = useState("")
+    const [loading, setLoading] = useState(false)
 
     const router = useRouter();
+    // loading
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (password !== confirmpassword) {
@@ -15,25 +17,29 @@ const RegisterPage = () => {
             return
         }
 
+        setLoading(true)
         try {
             const res = await fetch("/api/auth/register", {
                 method: "POST",
-                headers: { "Content_Type": "application/json" },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     email,
                     password,
                 }),
             })
 
-            if (!res.ok) {
-                throw new Error("Registration Faield")
-            }
             const data = await res.json()
+            if (!data.ok) {
+                throw new Error(data.message || "Registration Faield")
+            }
             console.log(data);
             router.push("/login")
         } catch (error) {
-            alert(error)
+            alert(error || "something wrong in registeration")
+        } finally {
+            setLoading(false)
         }
+
     }
 
     return (
@@ -44,23 +50,33 @@ const RegisterPage = () => {
                     type="email"
                     name="email"
                     placeholder="Email"
-                    value = {email}
-                    onChange={(e) =>setEmail(e.target.value)}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={loading}
+                    required
                 />
                 <input
                     type="password"
                     name="password"
-                    placeholder="password"
-                    value = {password}
-                    onChange={(e) =>setPassword(e.target.value)}
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                    required
                 />
                 <input
                     type="password"
-                    name="password"
+                    name="confirmPassword"
+
                     placeholder="Confirm Password"
-                    value = {confirmpassword}
-                    onChange={(e) =>setConfirmPassword(e.target.value)}
+                    value={confirmpassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={loading}
+                    required
                 />
+                <button type="submit" disabled={loading}>
+                    {loading ? "Registering..." : "Register"}
+                </button>
             </form>
             <div>
                 <p>Already have an account <a href="/login">Login</a></p>
