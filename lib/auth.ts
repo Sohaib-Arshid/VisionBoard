@@ -1,4 +1,3 @@
-import NextAuth from "next-auth";
 import { NextAuthOptions } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
@@ -63,7 +62,7 @@ export const authoption: NextAuthOptions = {
             }
             return token
         },
-        async session({ session, token, user }) {
+        async session({ session, token}) {
             if (session.user) {
                 session.user.id = token.id as string;
             }

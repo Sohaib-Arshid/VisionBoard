@@ -12,23 +12,24 @@ if (!cached) {
 }
 
 export async function connectdb() {
-    if(cached.connect){
+    if (cached.connect) {
         return cached.connect;
     }
 
-    if(!cached.promise){
+    if (!cached.promise) {
         const opts = {
-            bufferCommands : true,
-            maxPoolSize : 10 
-        }
-        mongoose.connect(MONGODB_URL, opts)
-        .then(()=> mongoose.connection)
+            bufferCommands: true,
+            maxPoolSize: 10,
+        };
+
+        cached.promise = mongoose.connect(MONGODB_URL, opts).then(() => mongoose.connection);
     }
 
-    try{
+    try {
         cached.connect = await cached.promise
-    }catch(error){
+    } catch (error) {
         cached.promise = null;
+        console.log(error);
     }
 
     return cached.connect;
