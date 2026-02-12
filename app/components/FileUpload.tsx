@@ -2,7 +2,7 @@
 import { upload , UploadResponse } from "@imagekit/next";
 import { useState } from "react";
 
-interface FileUploadProps {
+interface FileUploadProps{
     onSuccess: (res: UploadResponse) => void;
     onProgress?: (progress: number) => void;
     fileType: "image" | "video";
