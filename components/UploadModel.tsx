@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { FiX, FiVideo, FiImage } from "react-icons/fi";
-import { useVideos } from "@/contexts/VideoContext";
 import FileUpload from "./FileUpload";
 
 interface UploadModalProps {
@@ -19,8 +18,7 @@ export default function UploadModal({ user, onClose }: UploadModalProps) {
   const [tags, setTags] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  
-  const { uploadVideo } = useVideos();
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string>("");
 
   const categories = [
     "Education", "Entertainment", "Music", "Gaming",
@@ -34,8 +32,15 @@ export default function UploadModal({ user, onClose }: UploadModalProps) {
     }
   };
 
+  const handleFileUploadSuccess = (res: any) => {
+    console.log("File uploaded to ImageKit:", res);
+    setUploadedFileUrl(res.url);
+    setIsUploading(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!selectedFile) {
       alert("Please select a file to upload");
       return;
@@ -46,15 +51,36 @@ export default function UploadModal({ user, onClose }: UploadModalProps) {
       return;
     }
 
+    if (!uploadedFileUrl) {
+      alert("Please wait for file to upload");
+      return;
+    }
+
     setIsUploading(true);
     try {
-      await uploadVideo(selectedFile, {
+      const videoData = {
         title: title.trim(),
         description: description.trim(),
         category,
         tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+        fileId: `file-${Date.now()}`,
+        url: uploadedFileUrl,
+        userId: user.id,
+        fileType: uploadType,
+      };
+
+      const res = await fetch("/api/videos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(videoData),
       });
-      onClose();
+
+      if (res.ok) {
+        onClose();
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to save video");
+      }
     } catch (error: any) {
       alert(error.message || "Upload failed. Please try again.");
     } finally {
@@ -139,9 +165,7 @@ export default function UploadModal({ user, onClose }: UploadModalProps) {
 
             <FileUpload
               fileType={uploadType}
-              onSuccess={(res) => {
-                console.log("Uploaded:", res.url);
-              }}
+              onSuccess={handleFileUploadSuccess}
               onUploadStart={() => setIsUploading(true)}
               onFileSelect={handleFileSelect}
             />
@@ -217,7 +241,7 @@ export default function UploadModal({ user, onClose }: UploadModalProps) {
               </button>
               <button
                 type="submit"
-                disabled={isUploading || !selectedFile}
+                disabled={isUploading || !selectedFile || !uploadedFileUrl}
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               >
                 {isUploading ? (

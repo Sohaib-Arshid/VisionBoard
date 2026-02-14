@@ -1,25 +1,23 @@
 // components/FileUpload.tsx
 "use client";
 import { IKUpload } from "imagekitio-next";
-import { UploadResponse } from "imagekitio-next";
 import { FiUploadCloud } from "react-icons/fi";
 import { useState, useRef } from "react";
 
 interface FileUploadProps {
   fileType: "image" | "video" | "all";
-  onSuccess: (res: UploadResponse) => void;
+  onSuccess: (res: any) => void;
   onUploadStart?: () => void;
-  onFileSelect?: (file: File) => void;
 }
 
 export default function FileUpload({ 
   fileType, 
   onSuccess, 
-  onUploadStart,
-  onFileSelect 
+  onUploadStart 
 }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const uploadRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const uploadRef = useRef<any>(null);
 
   const acceptTypes = {
     image: "image/*",
@@ -27,38 +25,42 @@ export default function FileUpload({
     all: "image/*,video/*",
   }[fileType];
 
-  const onError = (err: UploadResponse) => {
-    console.error("Upload error:", err);
-    alert("Upload failed: " + (err.message || "Unknown error"));
+  const onError = (err: any) => {
+    console.error("❌ Upload error:", err);
+    setIsUploading(false);
+    
+    let errorMessage = "Upload failed: ";
+    if (err?.message?.includes("404")) {
+      errorMessage = "Authentication server not found. Please check configuration.";
+    } else if (err?.message?.includes("authenticator")) {
+      errorMessage = "Authentication configuration error.";
+    } else {
+      errorMessage += err?.message || "Unknown error";
+    }
+    
+    alert(errorMessage);
   };
 
-  const handleClick = () => {
-    if (uploadRef.current) {
-      uploadRef.current.click();
-    }
+  const handleSuccess = (res: any) => {
+    console.log("✅ Upload success:", res);
+    setIsUploading(false);
+    onSuccess(res);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && onFileSelect) {
-      onFileSelect(file);
-    }
+  const handleUploadStart = () => {
+    console.log("📤 Upload started");
+    setIsUploading(true);
+    onUploadStart?.();
   };
 
   return (
-    <div 
-      className="relative"
-      onDragEnter={() => setIsDragging(true)}
-      onDragLeave={() => setIsDragging(false)}
-      onDrop={() => setIsDragging(false)}
-    >
+    <div className="relative">
       <IKUpload
         ref={uploadRef}
         fileName={`vision-${Date.now()}`}
         onError={onError}
-        onSuccess={onSuccess}
-        onUploadStart={onUploadStart}
-        onChange={handleFileChange}
+        onSuccess={handleSuccess}
+        onUploadStart={handleUploadStart}
         validateFile={(file: File) => {
           const maxSize = file.type.startsWith('video/') ? 100 * 1024 * 1024 : 50 * 1024 * 1024;
           if (file.size > maxSize) {
@@ -71,26 +73,32 @@ export default function FileUpload({
         id="ik-upload"
         accept={acceptTypes}
         useUniqueFileName={true}
-        folder={`/users/${typeof window !== 'undefined' ? localStorage.getItem('userId') : 'anonymous'}/uploads`}
+        folder="/uploads"
       />
 
       <button
         type="button"
-        onClick={handleClick}
-        className={`w-full flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl transition-all duration-200 cursor-pointer ${
-          isDragging 
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-            : 'border-gray-300 dark:border-gray-700 hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'
-        }`}
+        onClick={() => uploadRef.current?.click()}
+        disabled={isUploading}
+        className={`w-full flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl transition-all ${
+          isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-500'
+        } ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+        onDragEnter={() => setIsDragging(true)}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={() => setIsDragging(false)}
       >
-        <FiUploadCloud className="text-4xl text-gray-400 mb-3" />
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          <span className="text-blue-600 dark:text-blue-400">Click to upload</span> or drag and drop
+        <FiUploadCloud className={`text-4xl mb-3 ${isUploading ? 'text-blue-500 animate-pulse' : 'text-gray-400'}`} />
+        <p className="text-sm font-medium text-gray-700">
+          {isUploading ? (
+            <span className="text-blue-600">Uploading...</span>
+          ) : (
+            <>
+              <span className="text-blue-600">Click to upload</span> or drag and drop
+            </>
+          )}
         </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          {fileType === "image" ? "PNG, JPG, GIF up to 50MB" : 
-           fileType === "video" ? "MP4, WebM up to 100MB" : 
-           "Images & Videos up to 100MB"}
+        <p className="text-xs text-gray-500 mt-1">
+          PNG, JPG, GIF up to 50MB
         </p>
       </button>
     </div>

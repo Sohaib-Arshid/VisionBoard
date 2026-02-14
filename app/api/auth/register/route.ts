@@ -6,11 +6,18 @@ import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name, avatar } = await req.json();
+    const { email, password, name } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json(
         { error: "Email and password required" },
+        { status: 400 }
+      );
+    }
+
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: "Password must be at least 6 characters" },
         { status: 400 }
       );
     }
@@ -26,15 +33,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    console.log("🔐 Creating new user:", email);
 
-    // Create user
+    // Create user with plain password - model middleware hash karega
     const user = await User.create({
       email,
-      password: hashedPassword,
+      password: password, // plain password, model middleware hash karega
       name: name || email.split('@')[0],
-      avatar: avatar || "",
+      avatar: "",
       role: "user",
       totalVideos: 0,
       totalViews: 0,
@@ -43,18 +49,19 @@ export async function POST(req: NextRequest) {
       notifications: 0,
     });
 
+    console.log("✅ User created successfully:", user._id);
+    console.log("🔑 Hashed password stored:", user.password.substring(0, 10) + "...");
+
     return NextResponse.json(
       {
-        id: user._id.toString(), // ✅ YEH LO
+        id: user._id.toString(),
         email: user.email,
         name: user.name,
-        avatar: user.avatar,
-        role: user.role,
       },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Registration error:", error);
+    console.error("❌ Registration error:", error);
     return NextResponse.json(
       { error: "Registration failed" },
       { status: 500 }

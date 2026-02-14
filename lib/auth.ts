@@ -1,3 +1,4 @@
+// lib/auth.ts
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { connectdb } from "@/lib/db";
@@ -13,48 +14,64 @@ export const authoption: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Email and password required");
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            console.log("Missing credentials");
+            throw new Error("Email and password required");
+          }
+
+          await connectdb();
+          console.log("🔍 Looking for user:", credentials.email);
+
+          const user = await User.findOne({ email: credentials.email });
+          if (!user) {
+            console.log("❌ User not found:", credentials.email);
+            throw new Error("No user found with this email");
+          }
+
+          console.log("✅ User found:", user.email);
+          console.log("🔐 Stored password hash:", user.password.substring(0, 10) + "...");
+          
+          // Compare password
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password,
+            user.password
+          );
+
+          console.log("🔑 Password valid:", isPasswordValid);
+
+          if (!isPasswordValid) {
+            console.log(" Invalid password for:", credentials.email);
+            throw new Error("Invalid password");
+          }
+
+          console.log("✅ Login successful for:", user.email);
+          
+          return {
+            id: user._id.toString(),
+            email: user.email,
+            name: user.name || user.email.split('@')[0],
+            image: user.avatar || "",
+            role: user.role || "user",
+          };
+        } catch (error: any) {
+          console.error("Authorize error:", error.message);
+          return null;
         }
-
-        await connectdb();
-
-        const user = await User.findOne({ email: credentials.email });
-        if (!user) {
-          throw new Error("User not found");
-        }
-
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
-
-        if (!isPasswordValid) {
-          throw new Error("Invalid password");
-        }
-
-        // 🔥 FIX: Return MongoDB ObjectId as string
-        return {
-          id: user._id.toString(), // ✅ YEH LO
-          email: user.email,
-          name: user.name || user.email.split('@')[0],
-          image: user.avatar || "",
-          role: user.role || "user",
-        };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id; // ✅ YEH STRING HONA CHAHIYE
+        token.id = user.id;
         token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string; // ✅ YEH STRING HAI
+        session.user.id = token.id as string;
         session.user.role = token.role as string;
       }
       return session;
@@ -62,7 +79,7 @@ export const authoption: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
-    error: "/login",
+    error: "/login", // Error page
   },
   session: {
     strategy: "jwt",
