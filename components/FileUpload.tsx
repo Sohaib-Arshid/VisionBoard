@@ -1,106 +1,73 @@
 // components/FileUpload.tsx
-"use client";
-import { IKUpload } from "imagekitio-next";
-import { FiUploadCloud } from "react-icons/fi";
-import { useState, useRef } from "react";
+'use client';
 
-interface FileUploadProps {
-  fileType: "image" | "video" | "all";
-  onSuccess: (res: any) => void;
-  onUploadStart?: () => void;
-}
+import { IKContext, IKUpload } from 'imagekitio-next';
+import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 
-export default function FileUpload({ 
-  fileType, 
-  onSuccess, 
-  onUploadStart 
-}: FileUploadProps) {
-  const [isDragging, setIsDragging] = useState(false);
+export default function FileUpload() {
   const [isUploading, setIsUploading] = useState(false);
-  const uploadRef = useRef<any>(null);
-
-  const acceptTypes = {
-    image: "image/*",
-    video: "video/*",
-    all: "image/*,video/*",
-  }[fileType];
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const { data: session } = useSession();
 
   const onError = (err: any) => {
-    console.error("❌ Upload error:", err);
+    console.error("❌ Upload error details:", {
+      message: err?.message,
+      response: err?.response,
+      stack: err?.stack,
+      raw: err
+    });
     setIsUploading(false);
-    
-    let errorMessage = "Upload failed: ";
-    if (err?.message?.includes("404")) {
-      errorMessage = "Authentication server not found. Please check configuration.";
-    } else if (err?.message?.includes("authenticator")) {
-      errorMessage = "Authentication configuration error.";
-    } else {
-      errorMessage += err?.message || "Unknown error";
-    }
-    
-    alert(errorMessage);
+    setUploadProgress(0);
   };
 
-  const handleSuccess = (res: any) => {
-    console.log("✅ Upload success:", res);
+  const onSuccess = (res: any) => {
+    console.log("✅ Upload successful:", res);
     setIsUploading(false);
-    onSuccess(res);
+    setUploadProgress(100);
+    // Refresh videos list
+    window.location.reload(); // Temporary: refresh page to show new video
   };
 
-  const handleUploadStart = () => {
-    console.log("📤 Upload started");
-    setIsUploading(true);
-    onUploadStart?.();
+  const onUploadProgress = (progress: any) => {
+    console.log("📤 Upload progress:", progress);
+    setUploadProgress(progress.loaded / progress.total * 100);
   };
 
   return (
-    <div className="relative">
-      <IKUpload
-        ref={uploadRef}
-        fileName={`vision-${Date.now()}`}
-        onError={onError}
-        onSuccess={handleSuccess}
-        onUploadStart={handleUploadStart}
-        validateFile={(file: File) => {
-          const maxSize = file.type.startsWith('video/') ? 100 * 1024 * 1024 : 50 * 1024 * 1024;
-          if (file.size > maxSize) {
-            alert(`File too large. Max size: ${maxSize / 1024 / 1024}MB`);
-            return false;
-          }
-          return true;
-        }}
-        className="hidden"
-        id="ik-upload"
-        accept={acceptTypes}
-        useUniqueFileName={true}
-        folder="/uploads"
-      />
-
-      <button
-        type="button"
-        onClick={() => uploadRef.current?.click()}
-        disabled={isUploading}
-        className={`w-full flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl transition-all ${
-          isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-500'
-        } ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-        onDragEnter={() => setIsDragging(true)}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={() => setIsDragging(false)}
-      >
-        <FiUploadCloud className={`text-4xl mb-3 ${isUploading ? 'text-blue-500 animate-pulse' : 'text-gray-400'}`} />
-        <p className="text-sm font-medium text-gray-700">
-          {isUploading ? (
-            <span className="text-blue-600">Uploading...</span>
-          ) : (
-            <>
-              <span className="text-blue-600">Click to upload</span> or drag and drop
-            </>
-          )}
-        </p>
-        <p className="text-xs text-gray-500 mt-1">
-          PNG, JPG, GIF up to 50MB
-        </p>
-      </button>
-    </div>
+    <IKContext
+      publicKey={process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY}
+      urlEndpoint={process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT}
+      authenticationEndpoint="/api/auth/imagekit-auth"
+    >
+      <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg">
+        <IKUpload
+          fileName={`vision-${Date.now()}`}
+          folder={`/users/${session?.user?.id}`}
+          onError={onError}
+          onSuccess={onSuccess}
+          onUploadProgress={onUploadProgress}
+          accept="image/*"
+          validateFile={(file) => file.size < 5 * 1024 * 1024} // 5MB limit
+          className="w-full p-4 cursor-pointer"
+          useUniqueFileName={true}
+          tags={['vision-board']}
+        />
+        
+        {isUploading && (
+          <div className="mt-4">
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div 
+                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+            </div>
+            <p className="text-sm text-gray-600 mt-2">
+              Uploading: {Math.round(uploadProgress)}%
+            </p>
+          </div>
+        )}
+      </div>
+    </IKContext>
   );
 }
