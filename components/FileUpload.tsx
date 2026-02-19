@@ -1,7 +1,7 @@
 // components/FileUpload.tsx
 'use client';
 
-import { IKContext, IKUpload } from 'imagekitio-next';
+import { IKContext, IKUpload } from 'imagekitio-react';
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 
@@ -11,8 +11,8 @@ export default function FileUpload() {
   const { data: session } = useSession();
 
   // Debug: Check environment variables
-  console.log("Public Key from env:", process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY);
-  console.log("URL Endpoint from env:", process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT);
+  console.log("🔍 Public Key from env:", process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY);
+  console.log("🔍 URL Endpoint from env:", process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT);
 
   const onError = (err: any) => {
     console.error("❌ Upload error details:", err);
@@ -21,7 +21,7 @@ export default function FileUpload() {
   };
 
   const onSuccess = (res: any) => {
-    console.log("Upload successful:", res);
+    console.log("✅ Upload successful:", res);
     setIsUploading(false);
     setUploadProgress(100);
     window.location.reload();
@@ -32,7 +32,6 @@ export default function FileUpload() {
     setUploadProgress((progress.loaded / progress.total) * 100);
   };
 
-  // Public key ko explicitly pass karo
   const publicKey = process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY;
   const urlEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT;
 
@@ -64,7 +63,7 @@ export default function FileUpload() {
               alert('Only images are allowed!');
               return false;
             }
-            if (file.size > 50 * 1024 * 1024) { // 50MB
+            if (file.size > 50 * 1024 * 1024) {
               alert('File size should be less than 50MB');
               return false;
             }

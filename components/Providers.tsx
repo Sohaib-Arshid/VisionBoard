@@ -1,44 +1,33 @@
 // components/Providers.tsx
 "use client";
+
 import { SessionProvider } from "next-auth/react";
-import { ImageKitProvider } from "imagekitio-next";
+import { IKContext } from "imagekitio-react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { VideoProvider } from "@/contexts/VideoContext";
+import { ReactNode } from "react";
 
-const urlEndpoint = process.env.NEXT_PUBLIC_URL_ENDPOINT;
-const publicKey = process.env.NEXT_PUBLIC_PUBLIC_KEY;
+interface ProvidersProps {
+  children: ReactNode;
+}
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  const authenticator = async () => {
-    try {
-      console.log("🔑 Fetching from /api/auth/imagekit-auth");
-      const response = await fetch("/api/auth/imagekit-auth"); 
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("❌ Authenticator error:", error);
-      throw error;
-    }
-  };
-
+// ✅ Make sure this is a default export
+export default function Providers({ children }: ProvidersProps) {
+  console.log("🔧 Providers mounted"); // Debug log
+  
   return (
     <SessionProvider>
-      <ImageKitProvider 
-        publicKey={publicKey} 
-        urlEndpoint={urlEndpoint}
-        authenticator={authenticator}
+      <IKContext
+        publicKey={process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY!}
+        urlEndpoint={process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT!}
+        authenticationEndpoint="/api/auth/imagekit-auth"
       >
         <AuthProvider>
           <VideoProvider>
             {children}
           </VideoProvider>
         </AuthProvider>
-      </ImageKitProvider>
+      </IKContext>
     </SessionProvider>
   );
 }
